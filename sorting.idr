@@ -196,90 +196,78 @@ mergeSort input with (splitRec input)
         (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
 
 -- -- this is mainly from book chapter 3 insSort implementation
-
-insert: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
-insert [] _ x = ([x] ** ((SingletonSorted x), 
-    listPermutationReflexive
-  ))
-insert (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
-      | Yes lteyx = 
-          ((y::x::xs) ** 
-            (
-              (SortedCons 
-                (SortedCons xsordered xltexs) 
-                (AllCons 
-                  lteyx 
-                  (allLTETransitiveProperty lteyx xltexs)
-                )
-              ),
-              listPermutationReflexive
-            )
-          )
-      | No lteyx =
-        let Yes xltey = (isLTE x y) in
-        let (zs ** (orderedzs, permzs)) = (insert xs xsordered y) in
-          (
-            (x::zs) **
-            (
-              (SortedCons
-                orderedzs 
-                (
-                  allSurvivesPermutation
-                    (AllCons xltey xltexs)
-                    -- AllCons: p x -> All p xs -> All p (x::xs)
-                    (listPermutationSymmetric permzs)
-                )
-              ),
-              (TransitivePermutation 
-                (SameHeadPermutes permzs)
-                -- ?first
-                SameFirstTwoPermutes
+-- :total
+insertSingleElement: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
+-- insertSingleElement [] _ x = ([x] ** ((SingletonSorted x), 
+--     listPermutationReflexive
+--   ))
+insertSingleElement Nil _ x = ([x] ** ((SingletonSorted x), 
+  listPermutationReflexive
+))
+insertSingleElement (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
+        | Yes lteyx = 
+            ((y::x::xs) ** 
+              (
+                (SortedCons 
+                  (SortedCons xsordered xltexs) 
+                  (AllCons 
+                    lteyx 
+                    (allLTETransitiveProperty lteyx xltexs)
+                  )
+                ),
+                listPermutationReflexive
               )
             )
-          )
+        | No lteyx =
+          let Yes xltey = (isLTE x y) in
+          let (zs ** (orderedzs, permzs)) = (insertSingleElement xs xsordered y) in
+            (
+              (x::zs) **
+              (
+                (SortedCons
+                  orderedzs 
+                  (
+                    allSurvivesPermutation
+                      (AllCons xltey xltexs)
+                      -- AllCons: p x -> All p xs -> All p (x::xs)
+                      (listPermutationSymmetric permzs)
+                  )
+                ),
+                (TransitivePermutation 
+                  (SameHeadPermutes permzs)
+                  -- ?first
+                  SameFirstTwoPermutes
+                )
+              )
+            )
+))
 
-    -- | Yes ltexy =
-    --     let (zs ** (orderedzs, permzs)) = (mergeLists xs orderedxs (y::ys) (SortedCons orderedys p2)) in 
-    --     let orderedxzs = SortedCons orderedzs (mergeLowerElement p1 p2 ltexy permzs) in
-    --     ((x::zs) ** (orderedxzs, SameHeadPermutes permzs))
-    -- | No lteyx =
-    --       let Yes yltex = (isLTE y x) in
-    --       let (zs ** (orderedzs, permzs)) = mergeLists (x::xs) (SortedCons orderedxs p1) ys orderedys in
-    --       let ordyzs = SortedCons orderedzs (mergeLowerElement p2 p1 yltex (TransitivePermutation listPermutationCommutative permzs)) in
-    --       let tmp = SameHeadPermutes (TransitivePermutation listPermutationCommutative permzs) in
-    --       let permyzs = TransitivePermutation (listPermutationCommutative {xs = (x::xs)}) tmp in
-    --       (y::zs ** (ordyzs, permyzs))
+-- (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
 
--- -- STILL NEEDS TO BE PROOF-IED
--- insert : (x : Nat) -> (xsSorted : Vect k Nat) -> (ysSorted : Vect (S k) Nat)
--- insert x [] = [x]
--- insert x (y :: xs) = case x < y of
--- 												False => y :: insert x xs
--- 												True => x :: y :: xs
--- insSort : (xs : Vect n Nat) -> (ys : Vect n Nat ** (ListPermutation xs ys, Sorted ys))
--- insSort [] = ([] ** (NilPermutesNil, NilSorted))
--- insSort (x :: xs) = let xsSorted = insSort xs in
--- 												insert x xsSorted
+-- insert : (xsNew : List Nat) ->
+--          (x : Nat) ->
+--          (Sorted xs_ord) ->
+--          (ys : List Nat ** ((Sorted ys), (ListPermutation (x::xsNew) ys)))
+-- insert [] x y = ([x] ** (p1, p2)) where
+--   p1 = SingletonSorted x
+--   p2 = SameHeadPermutes NilPermutesNil
+-- insert (z :: xs) x y =
+--   let headPf = IsHead [z] (z::xs) in
+--       let (res ** (p1, p2, p3)) = ?insertHelper (z::xs) x y headPf in
+--           (res ** (p1, p3))
 
-insert : (xsNew : List Nat) ->
-         (x : Nat) ->
-         (Sorted xs_ord) ->
-         (ys : List Nat ** ((Sorted ys), (ListPermutation (x::xsNew) ys)))
-insert [] x y = ([x] ** (p1, p2)) where
-  p1 = SingletonSorted x
-  p2 = SameHeadPermutes NilPermutesNil
-insert (z :: xs) x y =
-  let headPf = IsHead [z] (z::xs) in
-      let (res ** (p1, p2, p3)) = ?insertHelper (z::xs) x y headPf in
-          (res ** (p1, p3))
+-- insertSingleElement: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
 
-insSort : (xs : Vect n Nat) -> 
-          (ys : Vect n Nat ** (ListPermutation xs ys, Sorted ys))
+
+insSort : (xs : List Nat) -> 
+          (ys : List Nat ** (Sorted ys, ListPermutation xs ys))
+insSort [] = ([] ** (NilSorted, NilPermutesNil))
 insSort (x::xs) = 
   let (xsNew ** (xs_ord, xs_perm)) = insSort xs in
-  let (total_list ** (total_ord, total_perm)) = insert xsNew x xs_ord in
-  let match = TransitivePermutation (listPermutationFrontAppend x xs_perm) total_perm in
-  (total_list ** (total_ord, total_perm))
+  let (total_list ** (total_ord, total_perm)) = insertSingleElement xsNew xs_ord x in
+  let total_perm_rev = listPermutationSymmetric total_perm in
+  let match = TransitivePermutation (SameHeadPermutes xs_perm) total_perm_rev in
+  (total_list ** (total_ord, match))
 
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
@@ -293,7 +281,7 @@ main = do
     csv <- getLine
     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
     -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
-    let (sorted_numbers ** (_, _)) = mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
+    let (sorted_numbers ** (_, _)) = insSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
     putStrLn "After sorting, the nats are: "
     print sorted_numbers
     --   putStrLn ""
