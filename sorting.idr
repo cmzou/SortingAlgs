@@ -196,6 +196,60 @@ mergeSort input with (splitRec input)
         (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
 
 -- -- this is mainly from book chapter 3 insSort implementation
+
+insert: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
+insert [] _ x = ([x] ** ((SingletonSorted x), 
+    listPermutationReflexive
+  ))
+insert (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
+      | Yes lteyx = 
+          ((y::x::xs) ** 
+            (
+              (SortedCons 
+                (SortedCons xsordered xltexs) 
+                (AllCons 
+                  lteyx 
+                  (allLTETransitiveProperty lteyx xltexs)
+                )
+              ),
+              listPermutationReflexive
+            )
+          )
+      | No lteyx =
+        let Yes xltey = (isLTE x y) in
+        let (zs ** (orderedzs, permzs)) = (insert xs xsordered y) in
+          (
+            (x::zs) **
+            (
+              (SortedCons
+                orderedzs 
+                (
+                  allSurvivesPermutation
+                    (AllCons xltey xltexs)
+                    -- AllCons: p x -> All p xs -> All p (x::xs)
+                    (listPermutationSymmetric permzs)
+                )
+              ),
+              (TransitivePermutation 
+                (SameHeadPermutes permzs)
+                -- ?first
+                SameFirstTwoPermutes
+              )
+            )
+          )
+
+    -- | Yes ltexy =
+    --     let (zs ** (orderedzs, permzs)) = (mergeLists xs orderedxs (y::ys) (SortedCons orderedys p2)) in 
+    --     let orderedxzs = SortedCons orderedzs (mergeLowerElement p1 p2 ltexy permzs) in
+    --     ((x::zs) ** (orderedxzs, SameHeadPermutes permzs))
+    -- | No lteyx =
+    --       let Yes yltex = (isLTE y x) in
+    --       let (zs ** (orderedzs, permzs)) = mergeLists (x::xs) (SortedCons orderedxs p1) ys orderedys in
+    --       let ordyzs = SortedCons orderedzs (mergeLowerElement p2 p1 yltex (TransitivePermutation listPermutationCommutative permzs)) in
+    --       let tmp = SameHeadPermutes (TransitivePermutation listPermutationCommutative permzs) in
+    --       let permyzs = TransitivePermutation (listPermutationCommutative {xs = (x::xs)}) tmp in
+    --       (y::zs ** (ordyzs, permyzs))
+
 -- -- STILL NEEDS TO BE PROOF-IED
 -- insert : (x : Nat) -> (xsSorted : Vect k Nat) -> (ysSorted : Vect (S k) Nat)
 -- insert x [] = [x]
