@@ -207,6 +207,11 @@ mergeSort input with (splitRec input)
 -- insSort (x :: xs) = let xsSorted = insSort xs in
 -- 												insert x xsSorted
 
+insSort (x::xs) = 
+  let (xsNew ** (xs_ord, xs_perm)) = insSort xs in
+  let (total_list ** (total_ord, total_perm)) = insert xsNew x xs_ord in
+  let match = TransitivePermutation (listPermutationFrontAppend x xs_perm) total_perm in
+  (total_list ** (total_ord, total_perm))
 
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
@@ -216,12 +221,12 @@ convToNat s = the Nat (cast s)
 
 main : IO ()
 main = do
-    putStrLn "Please type a space-separated list of integers: "
+    putStrLn "Please type a space-separated list of natural numbers: "
     csv <- getLine
     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
     -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
     let (sorted_numbers ** (_, _)) = mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
-    putStrLn "After sorting, the integers are: "
+    putStrLn "After sorting, the nats are: "
     print sorted_numbers
     --   putStrLn ""
     --   --or if you want to make them space separated as well
