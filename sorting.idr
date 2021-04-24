@@ -272,6 +272,50 @@ insSort (x::xs) =
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
 
+partition: (p: Nat) -> (xs: List Nat) -> (as : List Nat ** 
+  bs : List Nat **
+  ( (All (\x => LTE x p) as)
+  , (All (\x => LTE p x) bs)
+  , ListPermutation (as ++ bs) (p::xs)
+  )
+)
+partition p [] = ([p] ** [] ** (
+  (AllCons lteRefl AllNil),
+  AllNil,
+  listPermutationReflexive)
+  )
+partition p (x::xs) with (isLTE x p)
+      | Yes ltexp = 
+        let (a ** b ** (allALteP, pLteAllB, perm )) = partition p xs in
+        (
+          x::a ** b ** (
+            (
+              AllCons ltexp allALteP
+            ),
+            pLteAllB, 
+            (
+                TransitivePermutation 
+                (SameHeadPermutes perm)
+                SameFirstTwoPermutes
+            )
+          )
+        )
+      | No lteyx =
+        let Yes pltex = (isLTE p x) in
+        let (a ** b ** (allALteP, pLteAllB, perm )) = partition p xs in
+        (
+          a ** x::b ** (
+            allALteP,
+            (
+              AllCons pltex pLteAllB
+            ), 
+            (
+              MiddleElementPermutes perm
+            )
+          )
+        )
+        
+
 convToNat: Integer -> Nat
 convToNat s = the Nat (cast s)
 
