@@ -74,6 +74,75 @@ proveSorted (first::(second::rest)) =
       Nothing
 --
 
+-- datatype to show that two lists are permutations
+data ListPermutation : (xlst: Vect n e) -> (ylst: Vect n e) -> Type where
+	NilPermutesNil: ListPermutation Nil Nil
+	SameHeadPermutes:
+		(x:e) -> ListPermutation a b -> ListPermutation (x::a) (x::b)
+	SameFirstTwoPermutes:
+		(x:e) -> (y:e) -> ListPermutation a b -> ListPermutation(x::(y::a)) (y::(x::b))
+	TransitivePermutation:
+		ListPermutation a b -> ListPermutation b c -> ListPermutation a c
+
+listPermutationReflexive: ListPermutation xs xs
+listPermutationReflexive {xs = []} = PermNil
+listPermutationReflexive {xs = x :: xs} = SameHeadPermutes (listPermutationReflexive {xs=xs})
+
+listPermutationSymmetric: ListPermutation xs ys -> ListPermutation ys xs
+listPermutationSymmetric NilPermutesNil = NilPermutesNil
+listPermutationSymmetric (SameHeadPermutes x) = SameHeadPermutes(listPermutationSymmetric  x)
+listPermutationSymmetric SameFirstTwoPermutes = SameFirstTwoPermutes
+listPermutationSymmetric (TransitivePermutation x y) = TransitivePermutation (listPermutationSymmetric y) (listPermutationSymmetric x)
+
+listPermutationFrontAppend: ListPermutation xs xs' -> ListPermutation (ys ++ xs) (ys ++ xs')
+listPermutationFrontAppend {ys=[]} p = p
+listPermutationFrontAppend {ys={y::ys}} p = SameHeadPermutes (listPermutationFrontAppend p)
+
+listPermutationBackAppend: ListPermutation xs xs' -> ListPermutation (xs ++ ys) (xs' ++ ys)
+listPermutationBackAppend NilPermutesNil = permRefl
+listPermutationBackAppend (SameHeadPermutes p) = SameHeadPermutes (listPermutationBackAppend p)
+listPermutationBackAppend SameFirstTwoPermutes = SameFirstTwoPermutes
+listPermutationBackAppend (TransitivePermutation x y) = TransitivePermutation (listPermutationBackAppend x) (listPermutationBackAppend y)
+
+listPermutationCommutative: ListPermutation (xs ++ ys) (ys ++ xs)
+listPermutationCommutative {xs=[]} {ys=ys} = 
+    rewrite appendNilRightNeutral ys in 
+    listPermutationReflexive
+listPermutationCommutative {xs=(x::xs)} {ys=[]} = 
+    rewrite appendNilRightNeutral (x :: xs) in 
+    listPermutationReflexive
+listPermutationCommutative {xs=(x::xs)} {ys=(y::ys)} = 
+	TransitivePermutation 
+  	(SameHeadPermutes 
+    	(TransitivePermutation 
+      	(listPermutationCommutative {xs=xs} {ys=y::ys})
+        (SameHeadPermutes (listPermutationSymmetric (listPermutationCommutative {xs=xs} {ys=ys}))
+    (TransitivePermutation SameFirstTwoPermutes (SameHeadPermutes (listPermutationCommutative {xs=x::xs} {ys=ys} )))
+
+
+data All: (a -> Type) -> Vect n a -> Type where
+	AllNil: All p []
+  AllCons: p x -> All p xs -> All p (x::xs)
+  
+allLTETransitiveProperty: LTE x y -> All (LTE y) ys -> All (LTE x) ys
+allLTETransitiveProperty _ AllNil = AllNil
+allLTETransitiveProperty xltey (AllCons p allys) = AllCons (lteTransitive xxltey p) (allLTEtrans xltey allys)
+
+allAppendTwoLists: All p xs -> All p ys -> All p (xs + ys)
+allAppendTwoLists AllNil p = p
+allAppendTwoLists (AllCons px x) ally = AllCons px (allAppend allx ally)
+
+
+
+mergeLists: (xs: List Nat) -> Sorted xs -> (ys: List Nat) -> Sorted ys ->
+	(zs: List Nat ** (Ordered zs, Permutation (xs ++ ys) zs))
+mergeLists [] _ ys orderedys = (ys ** (orderedys, reflexivePermutation))
+mergeLists xs orderedxs [] _ =
+	rewrite appendNilRightNeutral xs in (xs ** (orderedxs, reflexivePermutation))
+mergeLists (x::xs) (ListSorted (x::xs)) (y::ys) (ListSorted (y::ys)) with (isLTE x y)
+	| Yes ltexy =
+  	let (zs ** (orderedxz, permsz)) = (merge xs 
+
 -- we need to rename this and understand it/maybe reconfigure it if we can work it?
 -- takes in 3 permutations and produces a 4th one? 
 -- Where the 3rd one has to have first argument be concat of first argument of first 2
