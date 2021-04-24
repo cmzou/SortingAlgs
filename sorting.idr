@@ -42,7 +42,7 @@ reflPf (S k) (S j) with (reflPf k j)
 
 -- Prove that a given list A starts with a given list B 
 -- (ie, that the head of list A is list B)
-data IsHead : Vect m e1 -> Vect n e2 -> Type where
+data IsHead : List e1 -> List e2 -> Type where
   HeadList : IsHead (x::rest1) (x::rest2)
 
 --what the blogpost does?
@@ -261,6 +261,25 @@ insert (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
 -- insSort (x :: xs) = let xsSorted = insSort xs in
 -- 												insert x xsSorted
 
+insert : (xsNew : List Nat) ->
+         (x : Nat) ->
+         (Sorted xs_ord) ->
+         (ys : List Nat ** ((Sorted ys), (ListPermutation (x::xsNew) ys)))
+insert [] x y = ([x] ** (p1, p2)) where
+  p1 = SingletonSorted x
+  p2 = SameHeadPermutes NilPermutesNil
+insert (z :: xs) x y =
+  let headPf = IsHead [z] (z::xs) in
+      let (res ** (p1, p2, p3)) = ?insertHelper (z::xs) x y headPf in
+          (res ** (p1, p3))
+
+insSort : (xs : Vect n Nat) -> 
+          (ys : Vect n Nat ** (ListPermutation xs ys, Sorted ys))
+insSort (x::xs) = 
+  let (xsNew ** (xs_ord, xs_perm)) = insSort xs in
+  let (total_list ** (total_ord, total_perm)) = insert xsNew x xs_ord in
+  let match = TransitivePermutation (listPermutationFrontAppend x xs_perm) total_perm in
+  (total_list ** (total_ord, total_perm))
 
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
@@ -270,12 +289,12 @@ convToNat s = the Nat (cast s)
 
 main : IO ()
 main = do
-    putStrLn "Please type a space-separated list of integers: "
+    putStrLn "Please type a space-separated list of natural numbers: "
     csv <- getLine
     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
     -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
     let (sorted_numbers ** (_, _)) = mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
-    putStrLn "After sorting, the integers are: "
+    putStrLn "After sorting, the nats are: "
     print sorted_numbers
     --   putStrLn ""
     --   --or if you want to make them space separated as well
