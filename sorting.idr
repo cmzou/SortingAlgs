@@ -68,12 +68,17 @@ data IsHead : List e1 -> List e2 -> Type where
 
 -- datatype to show that two lists are permutations
 data ListPermutation : List a -> List a -> Type where
-	NilPermutesNil: ListPermutation Nil Nil
-	SameHeadPermutes:
-		ListPermutation a b -> ListPermutation (x::a) (x::b)
-	SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
-	TransitivePermutation:
-		ListPermutation a b -> ListPermutation b c -> ListPermutation a c
+    NilPermutesNil: ListPermutation Nil Nil
+    SameHeadPermutes:
+      ListPermutation a b -> ListPermutation (x::a) (x::b)
+    SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
+    MiddleElementPermutes:
+      ListPermutation (a++b) (c::d) -> ListPermutation (a++x::b) (c::x::d)
+    TransitivePermutation:
+      ListPermutation a b -> ListPermutation b c -> ListPermutation a c
+    ConcatentationPermutes : ListPermutation a b -> ListPermutation c d -> ListPermutation (a ++ c) (b ++ d)
+
+
 
 listPermutationReflexive: ListPermutation xs xs
 listPermutationReflexive {xs = []} = NilPermutesNil
@@ -196,12 +201,8 @@ mergeSort input with (splitRec input)
         (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
 
 -- -- this is mainly from book chapter 3 insSort implementation
--- :total
 insertSingleElement: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
--- insertSingleElement [] _ x = ([x] ** ((SingletonSorted x), 
---     listPermutationReflexive
---   ))
-insertSingleElement Nil _ x = ([x] ** ((SingletonSorted x), 
+insertSingleElement Nil _ x = ([x] ** ((SortedCons NilSorted AllNil), 
   listPermutationReflexive
 ))
 insertSingleElement (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
@@ -240,7 +241,6 @@ insertSingleElement (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
                 )
               )
             )
-))
 
 -- (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
 
