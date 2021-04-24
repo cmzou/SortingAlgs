@@ -158,16 +158,17 @@ mergeLists [] _ ys orderedys = (ys ** (orderedys, listPermutationReflexive))
 mergeLists xs orderedxs [] _ =
 	rewrite appendNilRightNeutral xs in (xs ** (orderedxs, listPermutationReflexive))
 mergeLists (x::xs) (SortedCons orderedxs p1) (y::ys) (SortedCons orderedys p2) with (isLTE x y)
-	| Yes ltexy =
-  	  let (zs ** (orderedzs, permzs)) = (mergeLists xs orderedxs (y::ys) (SortedCons orderedys p2)) in 
-      let orderedxzs = SortedCons orderedzs (mergeLowerElement p1 p2 ltexy permzs) in
-      ((x::zs) ** (orderedxzs, SameHeadPermutes permzs))
-  | No lteyx = 
-        let (zs ** (orderedzs, permzs)) = mergeLists (x::xs) (OrdCons ordxs p1) ys ordys in
-        let ordyzs = OrdCons orderedzs (mergeLowerElement p2 p1 (notLTE lteyx) (TransitivePermutation listPermutationCommutative permzs)) in
-        let tmp = PermCons (PermTrans permAppComm permzs) in
-        let permyzs = PermTrans (permAppComm {xs = (x::xs)}) tmp in
-        (y::zs ** (ordyzs, permyzs))
+    | Yes ltexy =
+        let (zs ** (orderedzs, permzs)) = (mergeLists xs orderedxs (y::ys) (SortedCons orderedys p2)) in 
+        let orderedxzs = SortedCons orderedzs (mergeLowerElement p1 p2 ltexy permzs) in
+        ((x::zs) ** (orderedxzs, SameHeadPermutes permzs))
+    | No lteyx =
+          let Yes yltex = (isLTE y x) in
+          let (zs ** (orderedzs, permzs)) = mergeLists (x::xs) (SortedCons orderedxs p1) ys orderedys in
+          let ordyzs = SortedCons orderedzs (mergeLowerElement p2 p1 yltex (TransitivePermutation listPermutationCommutative permzs)) in
+          let tmp = SameHeadPermutes (TransitivePermutation listPermutationCommutative permzs) in
+          let permyzs = TransitivePermutation (listPermutationCommutative {xs = (x::xs)}) tmp in
+          (y::zs ** (ordyzs, permyzs))
 
 -- -- we need to rename this and understand it/maybe reconfigure it if we can work it?
 -- -- takes in 3 permutations and produces a 4th one? 
