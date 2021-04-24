@@ -210,20 +210,21 @@ mergeSort input with (splitRec input)
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
 
-convToString: Integer -> String
-convToString s = the String (cast s)
+convToNat: Integer -> Nat
+convToNat s = the Nat (cast s)
 
 main : IO ()
 main = do
-      putStrLn "Please type a space-separated list of integers: "
-      csv <- getLine
-    -- let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
-    --now you just need to sort them with a funct that goes from List Nat -> List Nat 
-      let sorted_numbers = mergeSort (map (fromMaybe 0 . parseInteger) (words csv) )
-      putStrLn "After sorting, the integers are: "
-      -- print sorted_numbers
-      putStrLn ""
-      --or if you want to make them space separated as well
-      -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
+    putStrLn "Please type a space-separated list of integers: "
+    csv <- getLine
+    let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
+    -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
+    let (sorted_numbers ** (_, _)) = mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
+    putStrLn "After sorting, the integers are: "
+    print sorted_numbers
+    --   putStrLn ""
+    --   --or if you want to make them space separated as well
+    --   -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
+    putStrLn ""
   
   
