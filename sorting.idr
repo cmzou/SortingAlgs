@@ -314,7 +314,34 @@ partition p (x::xs) with (isLTE x p)
             )
           )
         )
-        
+
+sortedHelper: (xs: List Nat)
+
+quickSort : (xs : List Nat) -> 
+  (ys : List Nat ** (Sorted ys, ListPermutation xs ys))
+quickSort [] = ([] ** (NilSorted, NilPermutesNil))
+quickSort (x::xs) =
+    let (a ** b ** (altex, xlteb, perm)) = partition x xs in
+    let (asorted ** (sorteda, apermasorted)) = quickSort a in
+    let (bsorted ** (sortedb, bpermbsorted)) = quickSort b in
+    (
+        (asorted ++ bsorted) **
+        (
+            (
+                ?sorted
+            ),
+            (
+                TransitivePermutation
+                (listPermutationSymmetric perm)
+                (ConcatentationPermutes apermasorted bpermbsorted)
+            )
+        )
+    )
+
+    -- TransitivePermutation:
+    -- ListPermutation a b -> ListPermutation b c -> ListPermutation a c
+    -- listPermutationBackAppend: ListPermutation xs xs' -> ListPermutation (xs ++ ys) (xs' ++ ys)
+
 
 convToNat: Integer -> Nat
 convToNat s = the Nat (cast s)
