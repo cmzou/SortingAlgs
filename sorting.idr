@@ -128,7 +128,6 @@ allAppendTwoLists (AllCons px allx) ally = AllCons px (allAppendTwoLists allx al
 allSurvivesPermutation: All p xs -> ListPermutation xs ys -> All p ys
 allSurvivesPermutation _ NilPermutesNil = AllNil
 allSurvivesPermutation (AllCons px pxs) (SameHeadPermutes perms) = AllCons px (allSurvivesPermutation pxs perms)
--- allSurvivesPermutation (AllCons p1 (AllCons p2 all)) SameFirstTwoPermutes = (AllCons p2 (AllCons p1 all))
 allSurvivesPermutation pxs (TransitivePermutation x y) = allSurvivesPermutation (allSurvivesPermutation pxs x) y
 allSurvivesPermutation (AllCons p1 (AllCons p2 all)) SameFirstTwoPermutes = AllCons p2 (AllCons p1 all)
 
@@ -140,55 +139,60 @@ data Sorted: (lst: List Nat) -> Type where
   SingletonSorted: (element: Nat) -> Sorted(element::Nil)
   SortedCons: Sorted xs -> All (\x => y `LTE` x) xs -> Sorted (y::xs)
 
--- mergeLowerElement: All (LTE x) xs -> All (LTE y) ys -> LTE x y -> 
---   ListPermutation (xs ++ (y::ys)) zs -> All (LTE x) zs
--- mergeLowerElement xsltex ysltey xltey perm = 
-  
+mergeLowerElement: All (LTE x) xs -> All (LTE y) ys -> LTE x y -> 
+  ListPermutation (xs ++ (y::ys)) zs -> All (LTE x) zs
+mergeLowerElement xsltex ysltey xltey perm = 
+  allSurvivesPermutation
+    (allAppendTwoLists
+      xsltex
+      (AllCons
+        xltey
+        (allLTETransitiveProperty xltey ysltey)
+      )
+    )
+    perm
 
--- mergeLists: (xs: List Nat) -> Sorted xs -> (ys: List Nat) -> Sorted ys ->
--- 	(zs: List Nat ** (Ordered zs, Permutation (xs ++ ys) zs))
--- mergeLists [] _ ys orderedys = (ys ** (orderedys, reflexivePermutation))
--- mergeLists xs orderedxs [] _ =
--- 	rewrite appendNilRightNeutral xs in (xs ** (orderedxs, reflexivePermutation))
--- mergeLists (x::xs) (SortedCons ordxs p1) (y::ys) (SortedCons ordys p2) with (isLTE x y)
--- 	| Yes ltexy =
---   	let (zs ** (orderedzs, permzs)) = (merge xs orderedxs (y::ys) (SortedCons ordys p2) in 
---     let orderedxzs = SortedCons orderedzs (mergeLemma p1 p2 ltexy permzs) in
+mergeLists: (xs: List Nat) -> Sorted xs -> (ys: List Nat) -> Sorted ys ->
+	(zs: List Nat ** (Sorted zs, ListPermutation (xs ++ ys) zs))
+mergeLists [] _ ys orderedys = (ys ** (orderedys, listPermutationReflexive))
+mergeLists xs orderedxs [] _ =
+	rewrite appendNilRightNeutral xs in (xs ** (orderedxs, listPermutationReflexive))
+mergeLists (x::xs) (SortedCons orderedxs p1) (y::ys) (SortedCons orderedys p2) with (isLTE x y)
+	| Yes ltexy =
+  	  let (zs ** (orderedzs, permzs)) = (mergeLists xs orderedxs (y::ys) (SortedCons orderedys p2)) in 
+      let orderedxzs = SortedCons orderedzs (mergeLowerElement p1 p2 ltexy permzs) in
+      ((x::zs) ** (orderedxzs, SameHeadPermutes permzs))
+  | No lteyx = 
+        let (zs ** (orderedzs, permzs)) = mergeLists (x::xs) (OrdCons ordxs p1) ys ordys in
+        let ordyzs = OrdCons orderedzs (mergeLowerElement p2 p1 (notLTE lteyx) (TransitivePermutation listPermutationCommutative permzs)) in
+        let tmp = PermCons (PermTrans permAppComm permzs) in
+        let permyzs = PermTrans (permAppComm {xs = (x::xs)}) tmp in
+        (y::zs ** (ordyzs, permyzs))
 
---     | Yes ltexy =
---       let (zs ** (ordzs, permzs)) = (merge xs ordxs (y::ys) (OrdCons ordys p2)) in
---       let ordxzs = OrdCons ordzs (mergeLemma p1 p2 ltexy permzs) in
---       (x::zs ** (ordxzs, PermCons permzs)) 
---   | No contra = 
---       let (zs ** (ordzs, permzs)) = merge (x::xs) (OrdCons ordxs p1) ys ordys in
---       let ordyzs = OrdCons ordzs (mergeLemma p2 p1 (notLTE contra) (PermTrans permAppComm permzs)) in
---       let tmp = PermCons (PermTrans permAppComm permzs) in
---       let permyzs = PermTrans (permAppComm {xs = (x::xs)}) tmp in
---       (y::zs ** (ordyzs, permyzs))
 -- -- we need to rename this and understand it/maybe reconfigure it if we can work it?
 -- -- takes in 3 permutations and produces a 4th one? 
 -- -- Where the 3rd one has to have first argument be concat of first argument of first 2
 -- -- return ListPerm of second argument concat 
 -- -- i don't even get the function body of this really tbh
--- mergeSortLemma: ListPermutation x1 x2 -> ListPermutation y1 y2 ->
--- ListPermutation (x1 ++ y1) z -> ListPermutation (x2 ++ y2) z
+mergeSortLemma: ListPermutation x1 x2 -> ListPermutation y1 y2 ->
+ListPermutation (x2 ++ y2) z -> ListPermutation (x1 ++ y1) z
 -- mergeSortLemma perm1 perm2 perm3 = 
--- TransitivePermutation (listPermutationFrontAppend perm2) 
--- (Transitive Permutation ( listPermutationBackAppend perm1) perm3)
-
+--   TransitivePermutation (listPermutationFrontAppend perm2) 
+--   (TransitivePermutation ( listPermutationBackAppend perm1) perm3)
+mergeSortLemma p1 p2 p = 
+  TransitivePermutation (listPermutationFrontAppend p2) (TransitivePermutation (listPermutationBackAppend p1) p)
 
 -- -- this mainly comes from the book Chapter 10 merge sort implementations, adding in the proof tuples
 
--- mergeSort: (xs: Vect n Nat) -> (ys: Vect n Nat ** (SoListrted ys, Permutation ys xs))
--- mergeSort input with (splitRec input)
--- 	mergeSort [] | SplitRecNil = ([], NilSorted, NilPermutesNil)
---   mergeSort [x] | SplitRecOne = ([x], SingletonSorted, SameHeadPermutes)
---   mergeSort (left ++ right) | (SplitRecPair lrec rrec) = 
---   let (left_side ** (left_ord, left_perm)) = mergeSort left | lrec in
---   let (right_side ** (right_ord, right_perm)) = mergeSort right | rrec in
---   let (total_merge ** (total_ord, total_perm))	merge left_side left_ord right_side right_ord in
---   (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm)) -- we have everything up to this line, basically just need to combine the permutations
-
+mergeSort: (xs: List Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation xs ys))
+mergeSort input with (splitRec input)
+      mergeSort [] | SplitRecNil = ([] ** (NilSorted, listPermutationReflexive))
+      mergeSort [x] | SplitRecOne = ([x] ** ((SortedCons NilSorted AllNil), listPermutationReflexive))
+      mergeSort (left ++ right) | (SplitRecPair lrec rrec) = 
+        let (left_side ** (left_ord, left_perm)) = (mergeSort left | lrec) in
+        let (right_side ** (right_ord, right_perm)) = (mergeSort right | rrec) in
+        let (total_merge ** (total_ord, total_perm)) = mergeLists left_side left_ord right_side right_ord in
+        (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
 
 -- -- this is mainly from book chapter 3 insSort implementation
 -- -- STILL NEEDS TO BE PROOF-IED
@@ -206,20 +210,20 @@ data Sorted: (lst: List Nat) -> Type where
 -- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
 -- --But we can make some modifications using built in functions parseInteger and intersperse
 
--- convToString: Integer -> String
--- convToString s = the String (cast s)
+convToString: Integer -> String
+convToString s = the String (cast s)
 
--- main : IO ()
--- main = do
---     putStrLn "Please type a space-separated list of integers: "
---     csv <- getLine
---     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
---     --now you just need to sort them with a funct that goes from List Nat -> List Nat 
--- 	-- let sorted_numbers = ____sort numbers
---     putStrLn "After sorting, the integers are: "
---     -- print sorted_numbers
---     putStrLn ""
---     --or if you want to make them space separated as well
---    	-- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
+main : IO ()
+main = do
+      putStrLn "Please type a space-separated list of integers: "
+      csv <- getLine
+    -- let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
+    --now you just need to sort them with a funct that goes from List Nat -> List Nat 
+      let sorted_numbers = mergeSort (map (fromMaybe 0 . parseInteger) (words csv) )
+      putStrLn "After sorting, the integers are: "
+      -- print sorted_numbers
+      putStrLn ""
+      --or if you want to make them space separated as well
+      -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
   
   
