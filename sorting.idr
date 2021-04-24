@@ -1,4 +1,77 @@
+import Data.So
+import Data.Vect
+import Data.String
+import Data.List.Views
+-- Function that returns a proof that either x <= y or y <= x. Can define either for int or for nat (nat easier)
+--insertion sort guy uses IsLte, MkisLte, chooseLte
+--Ben uses natLTETrans, natLTEEith, totNat
+-- https://stackoverflow.com/questions/61170830/idris-pass-proof-to-a-function-that-arguments-are-lte
+-- ^ might be helpful if there are errors
+-- Not really sure how much of this we need & we need to rework it anyway
+IsLte : Ord e => (x:e) -> (y:e) -> Type
+IsLte x y = So (x <= y)
+mkIsLte : Ord e => (x:e) -> (y:e) -> Maybe (IsLte x y)
+mkIsLte x y =
+  case choose (x <= y) of 
+    Left proofXLteY =>
+      Just proofXLteY
+    Right proofNotXLteY =>
+      Nothing
+  
+-- Transitivity
+transPfHelper : (w : LTE left right) -> (x : LTE right k) -> LTE left k
+transPfHelper LTEZero LTEZero = LTEZero
+transPfHelper LTEZero (LTESucc x) = LTEZero
+transPfHelper (LTESucc y) (LTESucc x) = LTESucc (transPfHelper y x)
 
+transPf :(x,y,z : Nat) ->  LTE x y -> LTE y z -> LTE x z
+transPf Z Z z LTEZero LTEZero = LTEZero
+transPf Z (S left) (S right) LTEZero (LTESucc x) = LTEZero
+transPf (S left) (S right) (S k) (LTESucc w) (LTESucc x) =
+  LTESucc (transPfHelper w x)
+
+-- Reflexivity/anti-symmetry
+reflPf : (x,y : Nat) -> Either (LTE x y) (LTE y x)
+reflPf Z y = Left LTEZero
+reflPf x Z = Right LTEZero
+reflPf (S k) (S j) with (reflPf k j)
+  reflPf (S k) (S j) | (Left l) = Left (LTESucc l)
+  reflPf (S k) (S j) | (Right r) = Right (LTESucc r)
+
+
+
+-- Prove that a given list A starts with a given list B 
+-- (ie, that the head of list A is list B)
+data IsHead : Vect m e1 -> Vect n e2 -> Type where
+  HeadList : IsHead (x::rest1) (x::rest2)
+
+--what the blogpost does?
+-- data HeadIs : Vect n e -> e -> Type where
+--    MkHeadIs : HeadIs (x::xs) x
+
+-- Sorted Data Type
+-- Nil and a Singleton List are trivially sorted
+-- a list [a,b,...rest] is sorted iff a <= b and [b,...rest] is sorted
+data Sorted: (lst: Vect n Nat) -> Type where
+  NilSorted: Sorted(Nil)
+  SingletonSorted: (element: Nat) -> Sorted(element::Nil)
+  SortedCons: Sorted xs -> All (\x => y `LTE` xs -> Sorted (y::xs)
+
+-- One version of proveSorted that we need to rework & figure out if we can work with it this way
+-- /if it's better this way
+proveSorted : (lst: Vect n Nat) -> Maybe(Sorted lst)
+proveSorted Nil = Just NilSorted
+proveSorted (element::Nil) = Just(SingletonSorted element)
+proveSorted (first::(second::rest)) = 
+  case (mkIsLte first second) of
+    Just(proofFirstLteSecond) =>
+      case (proveSorted (second::rest)) of 
+        Just(proofTailSorted) =>
+          Just (ListSorted first second rest proofFirstLteSecond proofTailSorted)
+        Nothing =>
+          Nothing
+    Nothing => 
+      Nothing
 --
 
 -- we need to rename this and understand it/maybe reconfigure it if we can work it?
