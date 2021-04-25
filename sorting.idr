@@ -172,12 +172,6 @@ mergeLists (x::xs) (SortedCons orderedxs p1) (y::ys) (SortedCons orderedys p2) w
           let permyzs = TransitivePermutation (listPermutationCommutative {xs = (x::xs)}) tmp in
           (y::zs ** (ordyzs, permyzs))
 
-
-mergeSortLemma: ListPermutation x1 x2 -> ListPermutation y1 y2 ->
-ListPermutation (x2 ++ y2) z -> ListPermutation (x1 ++ y1) z
-mergeSortLemma perm1 perm2 perm3 = 
-  TransitivePermutation (listPermutationFrontAppend perm2) (TransitivePermutation (listPermutationBackAppend perm1) perm3)
-
 -- Adapted from Type-driven Development with Idris - Edwin Brady, Chapter 10
 mergeSort: (xs: List Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation xs ys))
 mergeSort input with (splitRec input)
@@ -187,7 +181,7 @@ mergeSort input with (splitRec input)
         let (left_side ** (left_ord, left_perm)) = (mergeSort left | lrec) in
         let (right_side ** (right_ord, right_perm)) = (mergeSort right | rrec) in
         let (total_merge ** (total_ord, total_perm)) = mergeLists left_side left_ord right_side right_ord in
-        (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
+        (total_merge ** (total_ord, TransitivePermutation (ConcatentationPermutes left_perm right_perm) total_perm))
 
 
 -- -------------------- Insertion Sort --------------------
