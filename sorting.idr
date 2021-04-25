@@ -12,9 +12,9 @@ data IsHead : List e1 -> List e2 -> Type where
     HeadList : IsHead (x::rest1) (x::rest2)
 
 --  Type that indicates two numbers are equal
-data EqNat : (num1 : Nat) -> (num2 : Nat) -> Type where
+data EqNat : (num1 : e) -> (num2 : e) -> Type where
     Same:
-        (a: Nat) -> (b: Nat) -> EqNat a b
+        (a: e) -> (b: e) -> EqNat a b
 
 -- Type that indicates two lists are permutations of one another
 data ListPermutation : List a -> List a -> Type where
@@ -316,7 +316,7 @@ quickSort (x::xs) =
 
 -- -------------------- Permutation Checker --------------------
 
-findMatch: (x: Nat) -> (xs : List Nat) -> Maybe (zs : List Nat ** (ListPermutation (x::zs) xs))
+findMatch: (Eq e) => (x: e) -> (xs : List e) -> Maybe (zs : List e ** (ListPermutation (x::zs) xs))
 findMatch x [] = Nothing
 findMatch a (x::xs) =
     case (a == x) of
@@ -342,7 +342,7 @@ findMatch a (x::xs) =
                     Nothing =>
                         Nothing
 
-permutationChecker: (xs: List Nat) -> (ys: List Nat) -> Maybe (ListPermutation xs ys)
+permutationChecker: (Eq e) => (xs: List e) -> (ys: List e) -> Maybe (ListPermutation xs ys)
 permutationChecker [] [] = Just NilPermutesNil
 permutationChecker [] _ = Nothing
 permutationChecker _ [] = Nothing
@@ -376,13 +376,13 @@ convToNat s = the Nat (cast s)
 
 runPerm: IO()
 runPerm = do
-    putStrLn "Please type a space-separated list of natural numbers (List 1): "
+    putStrLn "Please type a space-separated list of natural numbers or symbols (List 1): "
     first <- getLine
-    let firstnum = (map (convToNat . fromMaybe 0 . parseInteger) (words first))
+    let firstnum = (words first)
 
-    putStrLn "Please type a space-separated list of natural numbers (List 2): "
+    putStrLn "Please type a space-separated list of natural numbers or symbols (List 2): "
     second <- getLine
-    let secondnum = (map (convToNat . fromMaybe 0 . parseInteger) (words second))        
+    let secondnum = (words second)        
     let answer = permutationChecker firstnum secondnum
     case answer of
         Just _ =>
