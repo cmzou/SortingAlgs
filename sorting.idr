@@ -26,8 +26,6 @@ data ListPermutation : List a -> List a -> Type where
     SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
     MiddleElementPermutes:
         ListPermutation (a++b) d -> ListPermutation (a++x::b) (x::d)
-    MiddleElementPermutesReverse:
-        ListPermutation d (a++b) -> ListPermutation (x::d) (a++x::b)
     TransitivePermutation:
         ListPermutation a b -> ListPermutation b c -> ListPermutation a c
     ConcatentationPermutes : ListPermutation a b -> ListPermutation c d -> ListPermutation (a ++ c) (b ++ d)
@@ -91,8 +89,6 @@ listPermutationSymmetric (SameHeadPermutes x) = SameHeadPermutes (listPermutatio
 listPermutationSymmetric SameFirstTwoPermutes = SameFirstTwoPermutes
 listPermutationSymmetric (TransitivePermutation x y) = TransitivePermutation (listPermutationSymmetric y) (listPermutationSymmetric x)
 listPermutationSymmetric (ConcatentationPermutes a b) = (ConcatentationPermutes (listPermutationSymmetric a) (listPermutationSymmetric b))
-listPermutationSymmetric (MiddleElementPermutes x) = (MiddleElementPermutesReverse (listPermutationSymmetric x))
-listPermutationSymmetric (MiddleElementPermutesReverse x) = (MiddleElementPermutes (listPermutationSymmetric x))
 
 listPermutationFrontAppend: ListPermutation xs xs' -> ListPermutation (ys ++ xs) (ys ++ xs')
 listPermutationFrontAppend {ys=[]} p = p
@@ -149,7 +145,6 @@ mergeLowerElement xsltex ysltey xltey perm =
       )
     )
     perm
-
 
 
 -- -------------------- Merge Sort --------------------
