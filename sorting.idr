@@ -2,12 +2,51 @@ import Data.So
 import Data.Vect
 import Data.String
 import Data.List.Views
+
+--  -------------------- SETUP --------------------
+
+-- -------------------- Data Types --------------------
+
+-- Type that indicates a given list A starts with a given list B 
+data IsHead : List e1 -> List e2 -> Type where
+    HeadList : IsHead (x::rest1) (x::rest2)
+
+--  Type that indicates two numbers are equal
+data EqNat : (num1 : Nat) -> (num2 : Nat) -> Type where
+    Same:
+        (a: Nat) -> (b: Nat) -> EqNat a b
+
+-- Type that indicates two lists are permutations of one another
+data ListPermutation : List a -> List a -> Type where
+    NilPermutesNil: ListPermutation Nil Nil
+    SameHeadPermutes:
+        ListPermutation a b -> ListPermutation (x::a) (x::b)
+    EqualHeadPermutes:
+        ListPermutation a b -> (EqNat c d) -> ListPermutation (c::a) (d::b)
+    SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
+    MiddleElementPermutes:
+        ListPermutation (a++b) d -> ListPermutation (a++x::b) (x::d)
+    MiddleElementPermutesReverse:
+        ListPermutation d (a++b) -> ListPermutation (x::d) (a++x::b)
+    TransitivePermutation:
+        ListPermutation a b -> ListPermutation b c -> ListPermutation a c
+    ConcatentationPermutes : ListPermutation a b -> ListPermutation c d -> ListPermutation (a ++ c) (b ++ d)
+    
+-- Type that indicates a function applies to all elements in a list
+data All: (a -> Type) -> List a -> Type where 
+    AllNil: All p []
+    AllCons: p x -> All p xs -> All p (x::xs)
+
+-- Sorted Data Type
+data Sorted: (lst: List Nat) -> Type where
+    NilSorted: Sorted(Nil)
+    SingletonSorted: (element: Nat) -> Sorted(element::Nil)
+    SortedCons: Sorted xs -> All (\x => y `LTE` x) xs -> Sorted (y::xs)
+    SortedAppend: (Sorted xs) -> (Sorted ys) -> (z: Nat) -> (All (\x => x `LTE` z) xs) -> (All (\x => z `LTE` x) ys) -> Sorted (xs++z::ys)
+
+    
+-- -------------------- Helper Proofs --------------------
 -- Function that returns a proof that either x <= y or y <= x. Can define either for int or for nat (nat easier)
---insertion sort guy uses IsLte, MkisLte, chooseLte
---Ben uses natLTETrans, natLTEEith, totNat
--- https://stackoverflow.com/questions/61170830/idris-pass-proof-to-a-function-that-arguments-are-lte
--- ^ might be helpful if there are errors
--- Not really sure how much of this we need & we need to rework it anyway
 IsLte : Ord e => (x:e) -> (y:e) -> Type
 IsLte x y = So (x <= y)
 mkIsLte : Ord e => (x:e) -> (y:e) -> Maybe (IsLte x y)
@@ -18,7 +57,7 @@ mkIsLte x y =
     Right proofNotXLteY =>
       Nothing
   
--- Transitivity
+-- Transitivity Proof
 transPfHelper : (w : LTE left right) -> (x : LTE right k) -> LTE left k
 transPfHelper LTEZero LTEZero = LTEZero
 transPfHelper LTEZero (LTESucc x) = LTEZero
@@ -30,7 +69,7 @@ transPf Z (S left) (S right) LTEZero (LTESucc x) = LTEZero
 transPf (S left) (S right) (S k) (LTESucc w) (LTESucc x) =
   LTESucc (transPfHelper w x)
 
--- Reflexivity/anti-symmetry
+-- Reflexivity/anti-symmetry Proof
 reflPf : (x,y : Nat) -> Either (LTE x y) (LTE y x)
 reflPf Z y = Left LTEZero
 reflPf x Z = Right LTEZero
@@ -40,53 +79,7 @@ reflPf (S k) (S j) with (reflPf k j)
 
 
 
--- Prove that a given list A starts with a given list B 
--- (ie, that the head of list A is list B)
-data IsHead : List e1 -> List e2 -> Type where
-  HeadList : IsHead (x::rest1) (x::rest2)
-
---what the blogpost does?
--- data HeadIs : Vect n e -> e -> Type where
---    MkHeadIs : HeadIs (x::xs) x
-
--- One version of proveSorted that we need to rework & figure out if we can work with it this way
--- /if it's better this way
--- proveSorted : (lst: Vect n Nat) -> Maybe(Sorted lst)
--- proveSorted Nil = Just NilSorted
--- proveSorted (element::Nil) = Just(SingletonSorted element)
--- proveSorted (first::(second::rest)) = 
---   case (mkIsLte first second) of
---     Just(proofFirstLteSecond) =>
---       case (proveSorted (second::rest)) of 
---         Just(proofTailSorted) =>
---           Just (ListSorted first second rest proofFirstLteSecond proofTailSorted)
---         Nothing =>
---           Nothing
---     Nothing => 
---       Nothing
---
-
--- datatype to show that two lists are permutations
-data EqNat : (num1 : Nat) -> (num2 : Nat) -> Type where
-    Same:
-        (a: Nat) -> (b: Nat) -> EqNat a b
-
-data ListPermutation : List a -> List a -> Type where
-    NilPermutesNil: ListPermutation Nil Nil
-    SameHeadPermutes:
-      ListPermutation a b -> ListPermutation (x::a) (x::b)
-    EqualHeadPermutes:
-      ListPermutation a b -> (EqNat c d) -> ListPermutation (c::a) (d::b)
-    SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
-    MiddleElementPermutes:
-      ListPermutation (a++b) d -> ListPermutation (a++x::b) (x::d)
-    MiddleElementPermutesReverse:
-      ListPermutation d (a++b) -> ListPermutation (x::d) (a++x::b)
-    TransitivePermutation:
-      ListPermutation a b -> ListPermutation b c -> ListPermutation a c
-    ConcatentationPermutes : ListPermutation a b -> ListPermutation c d -> ListPermutation (a ++ c) (b ++ d)
-
-
+-- -------------------- Proofs of Permutation Properties --------------------
 
 listPermutationReflexive: ListPermutation xs xs
 listPermutationReflexive {xs = []} = NilPermutesNil
@@ -127,12 +120,9 @@ listPermutationCommutative {xs=(x::xs)} {ys=(y::ys)} =
       )
     )
     (TransitivePermutation SameFirstTwoPermutes (SameHeadPermutes (listPermutationCommutative {xs=x::xs} {ys=ys} )))
-
-
-data All: (a -> Type) -> List a -> Type where 
-  AllNil: All p []
-  AllCons: p x -> All p xs -> All p (x::xs)
   
+
+-- -------------------- Proofs of "All" Properties --------------------
 allLTETransitiveProperty: LTE x y -> All (LTE y) ys -> All (LTE x) ys
 allLTETransitiveProperty _ AllNil = AllNil
 allLTETransitiveProperty xltey (AllCons p allys) = AllCons (lteTransitive xltey p) (allLTETransitiveProperty xltey allys)
@@ -147,15 +137,6 @@ allSurvivesPermutation (AllCons px pxs) (SameHeadPermutes perms) = AllCons px (a
 allSurvivesPermutation pxs (TransitivePermutation x y) = allSurvivesPermutation (allSurvivesPermutation pxs x) y
 allSurvivesPermutation (AllCons p1 (AllCons p2 all)) SameFirstTwoPermutes = AllCons p2 (AllCons p1 all)
 
--- Sorted Data Type
--- Nil and a Singleton List are trivially sorted
--- a list [a,b,...rest] is sorted iff a <= b and [b,...rest] is sorted
-data Sorted: (lst: List Nat) -> Type where
-  NilSorted: Sorted(Nil)
-  SingletonSorted: (element: Nat) -> Sorted(element::Nil)
-  SortedCons: Sorted xs -> All (\x => y `LTE` x) xs -> Sorted (y::xs)
-  SortedAppend: (Sorted xs) -> (Sorted ys) -> (z: Nat) -> (All (\x => x `LTE` z) xs) -> (All (\x => z `LTE` x) ys) -> Sorted (xs++z::ys)
-
 mergeLowerElement: All (LTE x) xs -> All (LTE y) ys -> LTE x y -> 
   ListPermutation (xs ++ (y::ys)) zs -> All (LTE x) zs
 mergeLowerElement xsltex ysltey xltey perm = 
@@ -168,6 +149,10 @@ mergeLowerElement xsltex ysltey xltey perm =
       )
     )
     perm
+
+
+
+-- -------------------- Merge Sort --------------------
 
 mergeLists: (xs: List Nat) -> Sorted xs -> (ys: List Nat) -> Sorted ys ->
 	(zs: List Nat ** (Sorted zs, ListPermutation (xs ++ ys) zs))
@@ -187,21 +172,13 @@ mergeLists (x::xs) (SortedCons orderedxs p1) (y::ys) (SortedCons orderedys p2) w
           let permyzs = TransitivePermutation (listPermutationCommutative {xs = (x::xs)}) tmp in
           (y::zs ** (ordyzs, permyzs))
 
--- -- we need to rename this and understand it/maybe reconfigure it if we can work it?
--- -- takes in 3 permutations and produces a 4th one? 
--- -- Where the 3rd one has to have first argument be concat of first argument of first 2
--- -- return ListPerm of second argument concat 
--- -- i don't even get the function body of this really tbh
+
 mergeSortLemma: ListPermutation x1 x2 -> ListPermutation y1 y2 ->
 ListPermutation (x2 ++ y2) z -> ListPermutation (x1 ++ y1) z
--- mergeSortLemma perm1 perm2 perm3 = 
---   TransitivePermutation (listPermutationFrontAppend perm2) 
---   (TransitivePermutation ( listPermutationBackAppend perm1) perm3)
-mergeSortLemma p1 p2 p = 
-  TransitivePermutation (listPermutationFrontAppend p2) (TransitivePermutation (listPermutationBackAppend p1) p)
+mergeSortLemma perm1 perm2 perm3 = 
+  TransitivePermutation (listPermutationFrontAppend perm2) (TransitivePermutation (listPermutationBackAppend perm1) perm3)
 
--- -- this mainly comes from the book Chapter 10 merge sort implementations, adding in the proof tuples
-
+-- Adapted from Type-driven Development with Idris - Edwin Brady, Chapter 10
 mergeSort: (xs: List Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation xs ys))
 mergeSort input with (splitRec input)
       mergeSort [] | SplitRecNil = ([] ** (NilSorted, listPermutationReflexive))
@@ -212,7 +189,9 @@ mergeSort input with (splitRec input)
         let (total_merge ** (total_ord, total_perm)) = mergeLists left_side left_ord right_side right_ord in
         (total_merge ** (total_ord, mergeSortLemma left_perm right_perm total_perm))
 
--- -- this is mainly from book chapter 3 insSort implementation
+
+-- -------------------- Insertion Sort --------------------
+
 insertSingleElement: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
 insertSingleElement Nil _ x = ([x] ** ((SortedCons NilSorted AllNil), 
   listPermutationReflexive
@@ -254,23 +233,7 @@ insertSingleElement (x::xs) (SortedCons xsordered xltexs) y with (isLTE y x)
               )
             )
 
--- (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
-
--- insert : (xsNew : List Nat) ->
---          (x : Nat) ->
---          (Sorted xs_ord) ->
---          (ys : List Nat ** ((Sorted ys), (ListPermutation (x::xsNew) ys)))
--- insert [] x y = ([x] ** (p1, p2)) where
---   p1 = SingletonSorted x
---   p2 = SameHeadPermutes NilPermutesNil
--- insert (z :: xs) x y =
---   let headPf = IsHead [z] (z::xs) in
---       let (res ** (p1, p2, p3)) = ?insertHelper (z::xs) x y headPf in
---           (res ** (p1, p3))
-
--- insertSingleElement: (xs: List Nat) -> (Sorted xs) -> (x: Nat) -> (ys: List Nat ** (Sorted ys, ListPermutation ys (x::xs)))
-
-
+-- Adapted from Type-driven Development with Idris - Edwin Brady, Chapter 3
 insSort : (xs : List Nat) -> 
           (ys : List Nat ** (Sorted ys, ListPermutation xs ys))
 insSort [] = ([] ** (NilSorted, NilPermutesNil))
@@ -281,8 +244,8 @@ insSort (x::xs) =
   let match = TransitivePermutation (SameHeadPermutes xs_perm) total_perm_rev in
   (total_list ** (total_ord, match))
 
--- -- I think in terms of IO, the best thing is done by Insertion Sort guy:
--- --But we can make some modifications using built in functions parseInteger and intersperse
+
+-- -------------------- Quicksort --------------------
 
 partition: (p: Nat) -> (xs: List Nat) -> (as : List Nat ** 
   bs : List Nat **
@@ -291,11 +254,7 @@ partition: (p: Nat) -> (xs: List Nat) -> (as : List Nat **
   , ListPermutation (as ++ bs) xs
   )
 )
-partition p [] = ([] ** [] ** (
-  AllNil,
-  AllNil,
-  NilPermutesNil)
-  )
+partition p [] = ([] ** [] ** (AllNil,AllNil,NilPermutesNil))
 partition p (x::xs) with (isLTE x p)
       | Yes ltexp = 
         let (a ** b ** (allALteP, pLteAllB, perm )) = partition p xs in
@@ -324,8 +283,6 @@ partition p (x::xs) with (isLTE x p)
             )
           )
         )
-
--- sortedHelper: (xs: List Nat) -> (ys: List Nat) -> (Sorted xs) -> (Sorted ys) ->
 
 quickSort : (xs : List Nat) -> 
   (ys : List Nat ** (Sorted ys, ListPermutation xs ys))
@@ -362,6 +319,8 @@ quickSort (x::xs) =
             )
         )
     )
+
+-- -------------------- Permutation Checker --------------------
 
 findMatch: (x: Nat) -> (xs : List Nat) -> Maybe (zs : List Nat ** (ListPermutation (x::zs) xs))
 findMatch x [] = Nothing
@@ -412,41 +371,71 @@ permutationChecker (x::xs) ys =
             Nothing =>
                 Nothing
 
+
+-- -------------------- IO --------------------
+
+getSortResult: ( ys : List Nat ** (Sorted ys, ListPermutation xs ys)) -> List Nat
+getSortResult (x ** _) = x 
+
 convToNat: Integer -> Nat
 convToNat s = the Nat (cast s)
 
-main : IO ()
-main = do
-    putStrLn "Please type a space-separated list of natural numbers: "
+runPerm: IO()
+runPerm = do
+    putStrLn "Please type a space-separated list of natural numbers (List 1): "
     first <- getLine
     let firstnum = (map (convToNat . fromMaybe 0 . parseInteger) (words first))
 
-    putStrLn "Please type a space-separated list of natural numbers: "
+    putStrLn "Please type a space-separated list of natural numbers (List 2): "
     second <- getLine
-    let secondnum = (map (convToNat . fromMaybe 0 . parseInteger) (words second))
-    -- permutationChecker: (xs: List Nat) -> (ys: List Nat) -> Maybe (ListPermutation xs ys)
-
-    let res = permutationChecker firstnum secondnum
-    case res of
+    let secondnum = (map (convToNat . fromMaybe 0 . parseInteger) (words second))        
+    let answer = permutationChecker firstnum secondnum
+    case answer of
         Just _ =>
             putStrLn "Lists Permute :)"
         Nothing => 
             putStrLn "List Do Not Permute :("
-    --   putStrLn ""
-    --   --or if you want to make them space separated as well
-    --   -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
-    putStrLn ""
 
--- main : IO ()
--- main = do
---     putStrLn "Please type a space-separated list of natural numbers: "
---     csv <- getLine
---     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
---     -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
---     let (sorted_numbers ** (_, _)) = quickSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
---     putStrLn "After sorting, the nats are: "
---     print sorted_numbers
---     --   putStrLn ""
---     --   --or if you want to make them space separated as well
---     --   -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
---     putStrLn ""
+runSort: IO()
+runSort = 
+    do
+        putStrLn "Enter 1 for Merge Sort, 2 for Insertion Sort, 3 for Quicksort"
+        res <- getLine
+        let response = (fromMaybe 1 . parseInteger) res
+        case response of
+            1 =>
+                do
+                    putStrLn "Please type a space-separated list of natural numbers: "
+                    csv <- getLine
+                    print (getSortResult (mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv))))
+            2 =>
+                do
+                    putStrLn "Please type a space-separated list of natural numbers: "
+                    csv <- getLine
+                    print (getSortResult (mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv))))        
+            _ =>
+                do
+                    putStrLn "Please type a space-separated list of natural numbers: "
+                    csv <- getLine
+                    print (getSortResult (mergeSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv))))
+
+        putStrLn ""
+    
+main : IO ()
+main = do
+        putStrLn "Enter 1 to sort a list, 2 to verify list permutations, 3 to quit"
+        res <- getLine
+        let response = (fromMaybe 1 . parseInteger) res
+        case response of
+            1 =>
+                do
+                    
+                    runSort
+                    main
+            2 =>
+                do
+                    runPerm
+                    main
+            _ => putStrLn "Bye bye"
+
+        putStrLn ""
