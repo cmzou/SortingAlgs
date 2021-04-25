@@ -67,13 +67,21 @@ data IsHead : List e1 -> List e2 -> Type where
 --
 
 -- datatype to show that two lists are permutations
+data EqNat : (num1 : Nat) -> (num2 : Nat) -> Type where
+    Same:
+        (a: Nat) -> (b: Nat) -> EqNat a b
+
 data ListPermutation : List a -> List a -> Type where
     NilPermutesNil: ListPermutation Nil Nil
     SameHeadPermutes:
       ListPermutation a b -> ListPermutation (x::a) (x::b)
+    EqualHeadPermutes:
+      ListPermutation a b -> (EqNat c d) -> ListPermutation (c::a) (d::b)
     SameFirstTwoPermutes: ListPermutation(x::y::a) (y::x::a)
     MiddleElementPermutes:
-      ListPermutation (a++b) (c::d) -> ListPermutation (a++x::b) (c::x::d)
+      ListPermutation (a++b) d -> ListPermutation (a++x::b) (x::d)
+    MiddleElementPermutesReverse:
+      ListPermutation d (a++b) -> ListPermutation (x::d) (a++x::b)
     TransitivePermutation:
       ListPermutation a b -> ListPermutation b c -> ListPermutation a c
     ConcatentationPermutes : ListPermutation a b -> ListPermutation c d -> ListPermutation (a ++ c) (b ++ d)
@@ -89,6 +97,9 @@ listPermutationSymmetric NilPermutesNil = NilPermutesNil
 listPermutationSymmetric (SameHeadPermutes x) = SameHeadPermutes (listPermutationSymmetric  x)
 listPermutationSymmetric SameFirstTwoPermutes = SameFirstTwoPermutes
 listPermutationSymmetric (TransitivePermutation x y) = TransitivePermutation (listPermutationSymmetric y) (listPermutationSymmetric x)
+listPermutationSymmetric (ConcatentationPermutes a b) = (ConcatentationPermutes (listPermutationSymmetric a) (listPermutationSymmetric b))
+listPermutationSymmetric (MiddleElementPermutes x) = (MiddleElementPermutesReverse (listPermutationSymmetric x))
+listPermutationSymmetric (MiddleElementPermutesReverse x) = (MiddleElementPermutes (listPermutationSymmetric x))
 
 listPermutationFrontAppend: ListPermutation xs xs' -> ListPermutation (ys ++ xs) (ys ++ xs')
 listPermutationFrontAppend {ys=[]} p = p
@@ -143,6 +154,7 @@ data Sorted: (lst: List Nat) -> Type where
   NilSorted: Sorted(Nil)
   SingletonSorted: (element: Nat) -> Sorted(element::Nil)
   SortedCons: Sorted xs -> All (\x => y `LTE` x) xs -> Sorted (y::xs)
+  SortedAppend: (Sorted xs) -> (Sorted ys) -> (z: Nat) -> (All (\x => x `LTE` z) xs) -> (All (\x => z `LTE` x) ys) -> Sorted (xs++z::ys)
 
 mergeLowerElement: All (LTE x) xs -> All (LTE y) ys -> LTE x y -> 
   ListPermutation (xs ++ (y::ys)) zs -> All (LTE x) zs
@@ -276,13 +288,13 @@ partition: (p: Nat) -> (xs: List Nat) -> (as : List Nat **
   bs : List Nat **
   ( (All (\x => LTE x p) as)
   , (All (\x => LTE p x) bs)
-  , ListPermutation (as ++ bs) (p::xs)
+  , ListPermutation (as ++ bs) xs
   )
 )
-partition p [] = ([p] ** [] ** (
-  (AllCons lteRefl AllNil),
+partition p [] = ([] ** [] ** (
   AllNil,
-  listPermutationReflexive)
+  AllNil,
+  NilPermutesNil)
   )
 partition p (x::xs) with (isLTE x p)
       | Yes ltexp = 
@@ -290,13 +302,11 @@ partition p (x::xs) with (isLTE x p)
         (
           x::a ** b ** (
             (
-              AllCons ltexp allALteP
+                AllCons ltexp allALteP
             ),
             pLteAllB, 
             (
-                TransitivePermutation 
-                (SameHeadPermutes perm)
-                SameFirstTwoPermutes
+                SameHeadPermutes perm
             )
           )
         )
@@ -310,38 +320,97 @@ partition p (x::xs) with (isLTE x p)
               AllCons pltex pLteAllB
             ), 
             (
-              MiddleElementPermutes perm
+                MiddleElementPermutes perm
             )
           )
         )
 
-sortedHelper: (xs: List Nat)
+-- sortedHelper: (xs: List Nat) -> (ys: List Nat) -> (Sorted xs) -> (Sorted ys) ->
 
 quickSort : (xs : List Nat) -> 
   (ys : List Nat ** (Sorted ys, ListPermutation xs ys))
 quickSort [] = ([] ** (NilSorted, NilPermutesNil))
+quickSort [x] = ([x] ** ((SingletonSorted x), listPermutationReflexive))
 quickSort (x::xs) =
     let (a ** b ** (altex, xlteb, perm)) = partition x xs in
     let (asorted ** (sorteda, apermasorted)) = quickSort a in
     let (bsorted ** (sortedb, bpermbsorted)) = quickSort b in
     (
-        (asorted ++ bsorted) **
+        (asorted ++ x::bsorted) **
         (
             (
-                ?sorted
+                SortedAppend
+                sorteda
+                sortedb
+                x
+                (allSurvivesPermutation altex apermasorted)
+                (allSurvivesPermutation xlteb bpermbsorted)
             ),
             (
-                TransitivePermutation
-                (listPermutationSymmetric perm)
-                (ConcatentationPermutes apermasorted bpermbsorted)
+                listPermutationSymmetric
+                (
+                    MiddleElementPermutes
+                    (
+                        listPermutationSymmetric
+                        (
+                            TransitivePermutation
+                            (listPermutationSymmetric perm)
+                            (ConcatentationPermutes apermasorted bpermbsorted)
+                        )
+                    )
+                )
             )
         )
     )
 
-    -- TransitivePermutation:
-    -- ListPermutation a b -> ListPermutation b c -> ListPermutation a c
-    -- listPermutationBackAppend: ListPermutation xs xs' -> ListPermutation (xs ++ ys) (xs' ++ ys)
+findMatch: (x: Nat) -> (xs : List Nat) -> Maybe (zs : List Nat ** (ListPermutation (x::zs) xs))
+findMatch x [] = Nothing
+findMatch a (x::xs) =
+    case (a == x) of
+        True =>
+            Just (
+                xs ** (EqualHeadPermutes (listPermutationReflexive) (Same a x))
+                -- Maybe do something like this??
+                -- https://stackoverflow.com/questions/46853917/idris-proving-equality-of-two-numbers
+            )
+        False =>
+            let res = findMatch a xs in
+                case res of
+                    Just (zs ** azspermxs) => -- a:zs = xs => x::a::zs = x::xs
+                        Just ( 
+                            (x::zs) ** (
+                                (
+                                    TransitivePermutation
+                                    SameFirstTwoPermutes
+                                    (SameHeadPermutes azspermxs)
+                                )
+                            )
+                        )
+                    Nothing =>
+                        Nothing
 
+permutationChecker: (xs: List Nat) -> (ys: List Nat) -> Maybe (ListPermutation xs ys)
+permutationChecker [] [] = Just NilPermutesNil
+permutationChecker [] _ = Nothing
+permutationChecker _ [] = Nothing
+permutationChecker (x::xs) ys =
+    let match = findMatch x ys in
+        case match of 
+            Just (zs ** xzspermys) => -- xzpermys: ListPermutation x::zs ys
+                let recurse = permutationChecker xs zs in
+                    case recurse of
+                        Just xspermzs => -- ListPermutation xs zs
+                            -- x::xs = x::zs and x::zs = ys => x::xs == ys
+                            Just -- ListPermutation (x :: xs) ys
+                                (
+                                    TransitivePermutation
+                                    (SameHeadPermutes xspermzs)
+                                    xzspermys
+                                ) 
+                        Nothing =>
+                            Nothing
+            Nothing =>
+                Nothing
 
 convToNat: Integer -> Nat
 convToNat s = the Nat (cast s)
@@ -349,15 +418,35 @@ convToNat s = the Nat (cast s)
 main : IO ()
 main = do
     putStrLn "Please type a space-separated list of natural numbers: "
-    csv <- getLine
-    let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
-    -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
-    let (sorted_numbers ** (_, _)) = insSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
-    putStrLn "After sorting, the nats are: "
-    print sorted_numbers
+    first <- getLine
+    let firstnum = (map (convToNat . fromMaybe 0 . parseInteger) (words first))
+
+    putStrLn "Please type a space-separated list of natural numbers: "
+    second <- getLine
+    let secondnum = (map (convToNat . fromMaybe 0 . parseInteger) (words second))
+    -- permutationChecker: (xs: List Nat) -> (ys: List Nat) -> Maybe (ListPermutation xs ys)
+
+    let res = permutationChecker firstnum secondnum
+    case res of
+        Just _ =>
+            putStrLn "Lists Permute :)"
+        Nothing => 
+            putStrLn "List Do Not Permute :("
     --   putStrLn ""
     --   --or if you want to make them space separated as well
     --   -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
     putStrLn ""
-  
-  
+
+-- main : IO ()
+-- main = do
+--     putStrLn "Please type a space-separated list of natural numbers: "
+--     csv <- getLine
+--     let numbers = map (fromMaybe 0 . parseInteger) (words csv) 
+--     -- --now you just need to sort them with a funct that goes from List Nat -> List Nat 
+--     let (sorted_numbers ** (_, _)) = quickSort (map (convToNat . fromMaybe 0 . parseInteger) (words csv) )
+--     putStrLn "After sorting, the nats are: "
+--     print sorted_numbers
+--     --   putStrLn ""
+--     --   --or if you want to make them space separated as well
+--     --   -- putStrLn $ concat $ intersperse " " (map convToString sorted_numbers)
+--     putStrLn ""
