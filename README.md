@@ -2,6 +2,8 @@
 
 Final CS390 Project using the Idris language to implement and prove sorting algorithms
 
+Mariusz Derezinski-Choo, Ajay Dheeraj, Justina Zou
+
 # Contents
 
 We implemented provably correct implementations of quicksort, mergesort, and insertion sort in idris. we also implemented a permutation checker that given two lists, can determine if they are permutations of each other
