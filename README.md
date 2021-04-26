@@ -19,7 +19,7 @@ To run interactively:
     ./sorting
 ```
 
-To run test suite (python 3.x required)
+To run test suite
 
 ```
     bash run_tests.sh
