@@ -1,5 +1,3 @@
-echo "Generating Test Input..."
-python3 make_tests.py
 echo "Running Tests on Test Input..."
 idris sorting.idr -o sorting
 echo "Comparing Test Output..."
