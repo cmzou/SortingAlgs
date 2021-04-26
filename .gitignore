@@ -1,2 +1,5 @@
 *.ibc
 sorting
+actual.txt
+make_tests.py
+diff.txt

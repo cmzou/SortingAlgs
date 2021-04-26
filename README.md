@@ -12,11 +12,17 @@ We implemented provably correct implementations of quicksort, mergesort, and ins
 
 Developed and Tested on Idris v1.3.3
 
-To run:
+To run interactively:
 
 ```
     idris sorting.idr -o sorting
     ./sorting
+```
+
+To run test suite (python 3.x required)
+
+```
+    bash run_tests.sh
 ```
 
 # References
